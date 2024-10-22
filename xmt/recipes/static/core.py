@@ -19,6 +19,15 @@ except ImportError:
     from utils import *
     from parsing import parse_static_recipe, parse_index_string
 
+
+# TODO:
+#   1. VALIDATION
+#   2. A script that generates the YAML files.
+#   3. Graceful handling of inclusion
+#   4. Cleaning up the code in general (this is a resurrection)
+#   5. Better handling of the ordering of index strings
+#   6. __getitem__ magic.
+
 class StaticRecipe(Recipe):
     def __init__(self, spec: Spec, env: Environment):
         super().__init__(spec, env)

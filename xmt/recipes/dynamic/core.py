@@ -9,6 +9,15 @@ except ImportError:
     from base import Recipe
     from models import Spec, Context, Environment
     from utils import without
+
+
+# TODO:
+#   1. Handle automatic detection of "expr"
+#   2. Ensure that expr/return are paired correctly.
+#   3. Load static recipes.
+#   4. Remote inclusion caveats (e.g., cyclic dependency)
+#   5. VALIDATION
+
     
 class DynamicRecipe(Recipe):
     def __init__(self, spec : Spec, env : Environment):
@@ -18,10 +27,10 @@ class DynamicRecipe(Recipe):
         self.diff = Context()
         self.env = env
 
-        self.progress = 0
+        self.progress = 0 # TODO: Find a better way to handle this.
         
     def validate(self):
-        pass
+        pass # really?
     
     def process_includes(self):
         for defn in self.spec.get('include', []):
@@ -44,7 +53,7 @@ class DynamicRecipe(Recipe):
         if 'path' in var_dec: content = processor.load(_var_dec, self.env) # load content if possible
 
         value = content
-        if 'return' in var_dec:
+        if 'return' in var_dec: 
             value = processor.resolve_expression(var_dec['expr'], var_dec['return'], {**self.diff, var_name: content}, var_name)
         self.diff[var_name] = value
         
