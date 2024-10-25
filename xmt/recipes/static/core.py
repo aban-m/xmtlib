@@ -7,30 +7,27 @@ from collections import defaultdict
 
 
 try:
-    from .utils import *
-    from .parsing import parse_static_recipe, parse_index_string
+    from .parsing import parse_index_string
     from ..base import Recipe
-    from ..models import Spec, Environment
+    from ..models import Spec, RecipeStorage
     from .processor import IndexCollection
     
 except ImportError:
     sys.path.append('..')
     from base import Recipe
-    from models import Spec, Environment
-    from utils import *
-    from parsing import parse_static_recipe, parse_index_string
+    from models import Spec, RecipeStorage, FileStorage
+    from parsing import parse_index_string
     from processor import IndexCollection
 
 
 # TODO:
 #   1. VALIDATION
 #   2. A script that generates the YAML files.
-#   3. Graceful handling of inclusion
 #   4. Cleaning up the code in general (this is a resurrection)
 
 
 class StaticRecipe(Recipe):
-    def __init__(self, spec: Spec, env: Environment):
+    def __init__(self, spec: Spec, env: RecipeStorage):
         super().__init__(spec, env)
 
         self.content = []
@@ -43,7 +40,7 @@ class StaticRecipe(Recipe):
 
     def include(self, path):
         ''' Handles the inclusion of a static recipe. '''
-        subrecipe = StaticRecipe(parse_static_recipe(self.env.lookup(path)), self.env)
+        subrecipe = StaticRecipe(self.env.load(path), self.env)
         subrecipe.execute(compile_tags = False)
 
         precount = len(self.content)
@@ -55,7 +52,7 @@ class StaticRecipe(Recipe):
                 self._tags[tag] = [] # initializing a new tag container
             self._tags[tag].extend([precount+i for i in what])
         
-    def process_includes(self):
+    def process_content(self):
         ''' Iterates through the 'include' section, including every recipe. '''
         for item in self.spec['content']:
             if isinstance(item, dict):
@@ -95,7 +92,7 @@ class StaticRecipe(Recipe):
 
     def execute(self, compile_tags = True):
         ''' Executes the recipe, making it ready for consumption. '''
-        self.process_includes()
+        self.process_content()
         self.process_tags()
         if compile_tags: self.compile_tags()
         self.process_annotations()
@@ -117,6 +114,6 @@ if __name__ == '__main__':
     def boot():
         global spec, recipe
         spec = yaml.safe_load(open('recipe-archetype.yaml'))
-        recipe = StaticRecipe(spec, Environment.current())
+        recipe = StaticRecipe(spec, FileStorage.current())
         recipe.execute()
     boot()

@@ -1,6 +1,30 @@
 import pytest
 
 from ..xmt.recipes.static import parsing
+from ..xmt.recipes.static.core import StaticRecipe
+from ..xmt.recipes.models import MemoryStorage
+
+@pytest.fixture
+def basic_recipe():
+    return StaticRecipe(
+        {
+            'metadata': {
+                'name': 'test',
+                'type': 'static',
+                'content': 'hello world'
+            },
+            'content': [],
+            'tags': {},
+            'annotations': {}
+        },
+        MemoryStorage()
+    )
+
+
+
+
+class TestInclude:
+    pass
 
 class TestIndexStrings:
     @pytest.mark.parametrize('input, expected', [

@@ -1,13 +1,13 @@
 try:
     from . import processor, parsing
     from ..base import Recipe
-    from ..models import Spec, Context, Environment
+    from ..models import Spec, Context, RecipeStorage
     from ..utils import without
 except ImportError:
     import processor, parsing
     import sys; sys.path.insert(0, '..')
     from base import Recipe
-    from models import Spec, Context, Environment
+    from models import Spec, Context, RecipeStorage, FileStorage
     from utils import without
 
 
@@ -16,11 +16,9 @@ except ImportError:
 #   2. Ensure that expr/return are paired correctly.
 #   3. Load static recipes.
 #   4. Remote inclusion caveats (e.g., cyclic dependency)
-#   5. VALIDATION
-
     
 class DynamicRecipe(Recipe):
-    def __init__(self, spec : Spec, env : Environment):
+    def __init__(self, spec : Spec, env : RecipeStorage):
         super().__init__(spec, env)
         self.validate()
         
@@ -30,21 +28,22 @@ class DynamicRecipe(Recipe):
         self.progress = 0 # TODO: Find a better way to handle this.
         
     def validate(self):
+        # TODO: Implement validation
         pass # really?
     
     def process_includes(self):
         for defn in self.spec.get('include', []):
-            typ, ID = tuple(defn.items())[0]
+            typ, name = tuple(defn.items())[0]
             if typ == 'dynamic':
-                spec = parsing.parse_dynamic_recipe(self.env.lookup(ID+'.yaml'))
-                recipe = DynamicRecipe(spec, self.env)
+                spec = DynamicRecipe(self.env.load(name), self.env)
                 recipe.execute()
-                self.diff[ID] = recipe.diff
+                self.diff[name] = recipe.diff
                 
             elif typ == 'static':
-                raise NotImplementedError('Only dynamic recipes are supported.')
+                raise NotImplementedError('Only dynamic recipes are supported.') # TODO: Implement
+            
             else:
-                raise ValueError('Unrecognized value.')
+                raise ValueError('Unrecognized recipe type.')
         self.progress = max(self.progress, 1)
         
     def process_var(self, var_name, var_dec):
@@ -86,6 +85,6 @@ if __name__ == '__main__':
     def boot():
         global recipe, spec
         spec = yaml.safe_load(open(f'../../../samples/{NAME}'))
-        recipe = DynamicRecipe(spec, Environment('../../../samples'))
+        recipe = DynamicRecipe(spec, FileStorage('../../../samples'))
         recipe.execute()
     boot()

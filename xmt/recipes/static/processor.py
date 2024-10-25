@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 class IndexCollection:
     ''' Essentially a list of indices, with fast set operations. '''
     def __init__(self, indices, total_len, name = None):

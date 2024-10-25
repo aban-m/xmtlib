@@ -1,10 +1,5 @@
 import yaml
 
-def parse_static_recipe(source):
-    if isinstance(source, str):
-        return parse_static_recipe(open(source, 'r', encoding='utf-8'))
-    return yaml.safe_load(source)
-
 def process_raw(L : list):
     ''' Returns a sorted, duplicate-free version of L'''
     return sorted(list(set(L)))
