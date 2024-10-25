@@ -8,7 +8,7 @@ class IndexCollection:
         self.indices_set = set(indices) # for faster inversion
         self.total_len = total_len
 
-    def __len__(self): return len()
+    def __len__(self): return len(self.indices)
     def __repr__(self): return f'IndexCollection({self.name}, with {len(self.indices)} indices)'
     def __str__(self): return self.__repr__()
 

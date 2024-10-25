@@ -38,7 +38,7 @@ class StaticRecipe(Recipe):
         if not 'tags' in self.spec or not self.spec['tags']: self.spec['tags'] = {}
         if not 'annotations' in self.spec or not self.spec['annotations']: self.spec['annotations'] = {}
 
-        self._tags = defaultdict(list)
+        self._tags = {}
         self.tags = None
 
     def include(self, path):
@@ -50,7 +50,9 @@ class StaticRecipe(Recipe):
         for chunk in subrecipe.content:
             self.content.append(chunk)
 
-        for tag, what in subrecipe.tags.items():
+        for tag, what in subrecipe._tags.items():
+            if not tag in self._tags:
+                self._tags[tag] = [] # initializing a new tag container
             self._tags[tag].extend([precount+i for i in what])
         
     def process_includes(self):
@@ -59,7 +61,7 @@ class StaticRecipe(Recipe):
             if isinstance(item, dict):
                 if 'include' in item: self.include(item['include'])
                 continue
-            self.content.append(defaultdict(str, {'content': item}))
+            self.content.append(defaultdict(None, {'content': item}))
 
     def process_tags(self):
         ''' Handles the 'tags' section. '''
@@ -87,6 +89,7 @@ class StaticRecipe(Recipe):
 
     def compile_tags(self):
         ''' Optimize the tags for fast access and filtering '''
+        self.tags = {}
         for tag, indices in self._tags.items():
             self.tags[tag] = IndexCollection(indices, len(self), tag)
 
@@ -101,7 +104,7 @@ class StaticRecipe(Recipe):
         if isinstance(i, int) or isinstance(i, slice): return self.content[i]
         elif isinstance(i, str): return self.tags[i]
         elif isinstance(i, IndexCollection):
-            return [self[j] for j in i.indices]
+            return [self[j-1] for j in i.indices]
         else: raise TypeError(f'Slicing is not supported for type {type(i)}')
     
     def __len__(self): return len(self.content)
@@ -113,7 +116,7 @@ if __name__ == '__main__':
     os.chdir('../../../samples')
     def boot():
         global spec, recipe
-        spec = yaml.safe_load(open('archetype.yaml'))
+        spec = yaml.safe_load(open('recipe-archetype.yaml'))
         recipe = StaticRecipe(spec, Environment.current())
         recipe.execute()
     boot()
