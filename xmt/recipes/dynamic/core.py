@@ -1,11 +1,12 @@
 try:
-    from . import processor, parsing
+    from . import processor
     from ..base import Recipe
     from ..models import Spec, Context, RecipeStorage
     from ..utils import without
 except ImportError:
-    import processor, parsing
-    import sys; sys.path.insert(0, '..')
+    import processor
+    import sys
+    sys.path.insert(0, '..')
     from base import Recipe
     from models import Spec, Context, RecipeStorage, FileStorage
     from utils import without
@@ -33,7 +34,8 @@ class DynamicRecipe(Recipe):
         for defn in self.spec.get('include', []):
             typ, name = tuple(defn.items())[0]
             if typ == 'dynamic':
-                spec = DynamicRecipe(self.env.load(name), self.env)
+                spec = self.env.load(name)
+                recipe = DynamicRecipe(spec, self.env)
                 recipe.execute()
                 self.diff[name] = recipe.diff
                 
@@ -46,7 +48,8 @@ class DynamicRecipe(Recipe):
     def process_var(self, var_name, var_dec):
         _var_dec = processor.interpret(without(var_dec, 'return'), self.diff)
         content = ''
-        if 'path' in var_dec: content = processor.load(_var_dec, self.env) # load content if possible
+        if 'path' in var_dec: 
+            content = processor.load(_var_dec, self.env) # load content if possible
 
         value = content
         if 'return' in var_dec: 
