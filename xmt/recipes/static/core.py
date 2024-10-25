@@ -24,7 +24,6 @@ except ImportError:
 # TODO:
 #   1. VALIDATION
 #   2. A script that generates the YAML files.
-#   4. Cleaning up the code in general (this is a resurrection)
 
 
 class StaticRecipe(Recipe):
@@ -86,7 +85,7 @@ class StaticRecipe(Recipe):
                 while cpos < len(val):
                     pick = val[cpos]
                     if isinstance(pick, dict):
-                        if 'jump' in pick: # TODO: Handle jumping 
+                        if 'jump' in pick: # TODO: Handle and TEST jumping 
                             rpos = pick['jump'] + 1
                     else:
                         self.content[rpos][ann] = pick
@@ -116,7 +115,7 @@ class StaticRecipe(Recipe):
         if compile_tags: self.compile_tags()
         self.process_annotations()
 
-    def __getitem__(self, i): # TODO: Test
+    def __getitem__(self, i): 
         if isinstance(i, int) or isinstance(i, slice): return self.content[i]
         elif isinstance(i, str): return self.tags[i]
         elif isinstance(i, IndexCollection):

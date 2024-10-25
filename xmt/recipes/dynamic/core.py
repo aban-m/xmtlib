@@ -24,8 +24,6 @@ class DynamicRecipe(Recipe):
         
         self.diff = Context()
         self.env = env
-
-        self.progress = 0 # TODO: Find a better way to handle this.
         
     def validate(self):
         # TODO: Implement validation
@@ -44,7 +42,6 @@ class DynamicRecipe(Recipe):
             
             else:
                 raise ValueError('Unrecognized recipe type.')
-        self.progress = max(self.progress, 1)
         
     def process_var(self, var_name, var_dec):
         _var_dec = processor.interpret(without(var_dec, 'return'), self.diff)
@@ -60,15 +57,12 @@ class DynamicRecipe(Recipe):
         for defn in self.spec['var']:
             var_name, var_dec  = tuple(defn.items())[0]
             self.process_var(var_name, var_dec)
-        self.progress = max(self.progress, 2)
 
     def process_return(self):
         if 'result' in self.spec:
             self.process_var('RETURN', self.spec['result'])
-        self.progress = max(self.progress, 3)
 
     def value(self):
-        if self.progress < 3: raise Exception('Execution incomplete.')
         return self.diff['RETURN']
 
     def execute(self):
