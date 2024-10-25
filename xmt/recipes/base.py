@@ -9,6 +9,7 @@ class Recipe:
     def __init__(self, spec: Spec, env: RecipeStorage):
         for attr in ['type', 'id']:
             assert attr in spec['metadata']
+            setattr(self, attr, spec['metadata'][attr])
         for attr in ['type', 'id', 'name', 'description']:
             spec['metadata'][attr] = spec.get(attr, '')
         self.spec =  spec
