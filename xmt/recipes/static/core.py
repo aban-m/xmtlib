@@ -5,12 +5,12 @@ import re
 from jinja2 import Template
 from collections import defaultdict
 
-
 try:
     from .parsing import parse_index_string
     from ..base import Recipe
     from ..models import Spec, RecipeStorage
     from .processor import IndexCollection
+    from ..models import CyclicDependencyException
     
 except ImportError:
     sys.path.append('..')
@@ -18,6 +18,7 @@ except ImportError:
     from models import Spec, RecipeStorage, FileStorage
     from parsing import parse_index_string
     from processor import IndexCollection
+    from models import CyclicDependencyException
 
 
 # TODO:
@@ -27,8 +28,13 @@ except ImportError:
 
 
 class StaticRecipe(Recipe):
-    def __init__(self, spec: Spec, env: RecipeStorage):
+    def __init__(self, spec: Spec, env: RecipeStorage, stack = None):
         super().__init__(spec, env)
+
+        self.stack = stack if stack is not None else []
+        if self.id in self.stack: # Catch circular dependencies
+            raise CyclicDependencyException(f'Circular dependency detected: {self.id} ultimately calls itself.')
+        self.stack.append(self.id)
 
         self.content = []
 
@@ -40,17 +46,19 @@ class StaticRecipe(Recipe):
 
     def include(self, path):
         ''' Handles the inclusion of a static recipe. '''
-        subrecipe = StaticRecipe(self.env.load(path), self.env)
+        subrecipe = StaticRecipe(self.env.load(path), self.env, self.stack)
         subrecipe.execute(compile_tags = False)
 
-        precount = len(self.content)
+        precount = len(self)
+
         for chunk in subrecipe.content:
             self.content.append(chunk)
 
         for tag, what in subrecipe._tags.items():
-            if not tag in self._tags:
-                self._tags[tag] = [] # initializing a new tag container
-            self._tags[tag].extend([precount+i for i in what])
+            if tag in self.spec['tags']:
+                if isinstance(self.spec['tags'][tag], str):
+                    self.spec['tags'][tag] = parse_index_string(self.spec['tags'][tag], precount)
+            self.spec['tags'][tag].extend([precount + i for i in what]) # HACK: Modifying the spec itself!
         
     def process_content(self):
         ''' Iterates through the 'include' section, including every recipe. '''
@@ -60,10 +68,15 @@ class StaticRecipe(Recipe):
                 continue
             self.content.append(defaultdict(None, {'content': item}))
 
+    def process_tag(self, tag, what):
+        if not tag in self._tags:
+            self._tags[tag] = []
+        if isinstance(what, str): what = parse_index_string(what, len(self))
+        self._tags[tag].extend(what)
     def process_tags(self):
         ''' Handles the 'tags' section. '''
-        for tag, indstr in self.spec['tags'].items():
-            self._tags[tag] = parse_index_string(indstr, len(self))
+        for tag, what in self.spec['tags'].items():
+            self.process_tag(tag, what)
             
     def process_annotations(self):
         ''' Handles the 'annotations' section. '''
@@ -74,7 +87,7 @@ class StaticRecipe(Recipe):
                     pick = val[cpos]
                     if isinstance(pick, dict):
                         if 'jump' in pick: # TODO: Handle jumping 
-                            rpos = pick['jump']
+                            rpos = pick['jump'] + 1
                     else:
                         self.content[rpos][ann] = pick
                     cpos += 1; rpos += 1
@@ -92,6 +105,12 @@ class StaticRecipe(Recipe):
 
     def execute(self, compile_tags = True):
         ''' Executes the recipe, making it ready for consumption. '''
+        # First, clear the state
+        self.content = []
+        self._tags = {}
+        self.tags = None
+
+        # Then, process
         self.process_content()
         self.process_tags()
         if compile_tags: self.compile_tags()

@@ -14,6 +14,7 @@ class Spec(dict): pass
 
 class StorageException(Exception): pass
 class RecipeNotFoundException(StorageException): pass
+class CyclicDependencyException(StorageException): pass
 
 class RecipeStorage:
     # make this an abstract class
@@ -21,6 +22,8 @@ class RecipeStorage:
         pass
     def load(self, name) -> Spec:
         pass
+
+    
 
 class FileStorage(RecipeStorage):
     ''' A file-based storage that stores recipe specifications in files '''
