@@ -31,17 +31,19 @@ class IndexCollection:
         # use two pointers to find union
         i, j = 0, 0
         while i < len(self.indices) and j < len(other.indices):
-            if self.indices[i] == other.indices[j]:
+            if self.indices[i] < other.indices[j]:
                 result.append(self.indices[i])
                 i += 1
-                j += 1
-            elif self.indices[i] < other.indices[j]:
-                result.append(self.indices[i])
-                i += 1
-            else:
+            elif self.indices[i] > other.indices[j]:
                 result.append(other.indices[j])
                 j += 1
-        return IndexCollection(result, min(self.total_len, other.total_len),
+            else:
+                result.append(self.indices[i])
+                i += 1
+                j += 1
+        result += self.indices[i:]
+        result += other.indices[j:]
+        return IndexCollection(result, max(self.total_len, other.total_len),
                                f'({self.name} | {other.name})' if self.name and other.name else None)
     
     def __sub__(self, other):
@@ -63,7 +65,7 @@ class IndexCollection:
     # define the minus sign to be a complement
     def __invert__(self):
         result = []
-        for i in range(self.total_len):
+        for i in range(1, self.total_len + 1):
             if i not in self.indices_set:
                 result.append(i)
         return IndexCollection(result, self.total_len, f'~{self.name}')
