@@ -1,0 +1,32 @@
+metadata:
+  id: quoterandgpt
+  name: Random Quote --> GPT!
+  type: dynamic
+
+include:
+  - dynamic: quoterand
+
+var:
+  - prompt: |
+      {{ quoterand.quote }}
+      (by {{ quoterand.author }})
+  - _gptresp:
+      http:
+        target: https://api.openai.com/v1/chat/completions
+        method: POST
+        headers:
+          Authorization: Bearer <REDACTED>
+        data:
+          model: gpt-4o-mini
+          messages:
+            - role: system
+              content: Elaborate on the theme of the following quote.
+            - role: user
+              content: "{{ prompt }}"
+  - gptresp:
+      args: _gptresp
+      do: jsonpath
+      return: $[0].choices[0].message.content
+
+result:
+  return: "{{ gptresp }}"

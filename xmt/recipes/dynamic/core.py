@@ -36,12 +36,15 @@ class DynamicRecipe(Recipe):
             var_name, var_dec = tuple(defn.items())[0]
 
             if not isinstance(var_dec, dict):
-                self.spec['var'][i] = {
-                    var_name: {
-                        'return': var_dec
+                if var_dec is not None:
+                    self.spec['var'][i] = {
+                        var_name: {
+                            'return': var_dec
+                        }
                     }
-                }
-                var_dec = self.spec['var'][i][var_name]
+                    var_dec = self.spec['var'][i][var_name]
+                else:
+                    raise ParsingError(f'Missing definition - ensure proper indentation.')
             # assert only one of the sources is present
             sources_len = len([source for source in SOURCES if source in var_dec])
             if sources_len == 0:
@@ -52,6 +55,8 @@ class DynamicRecipe(Recipe):
                 assert var_dec != 'jinja2', 'Cannot have a jinja2 do block in a source-based variable definition.'
 
                 source = [source for source in SOURCES if source in var_dec][0]
+                var_dec['_source'] = source
+
                 if source in ['http', 'path']:          # flesh out
                     if isinstance(var_dec[source], str):
                         var_dec[source] = {
@@ -64,9 +69,6 @@ class DynamicRecipe(Recipe):
 
                 if source == 'args' and isinstance(var_dec['args'], str):
                     var_dec['args'] = [var_dec['args']]
-
-                var_dec['_source'] = source
-
             else:
                 raise ParsingError('Cannot have more than one source in a variable definition.')
             
@@ -120,7 +122,8 @@ class DynamicRecipe(Recipe):
             raise ValueError('Unrecognized source type.') # should not be reached.
 
         # casting
-        fetched = processor.cast(type, fetched)
+        if source != 'args':
+            fetched = processor.cast(type, fetched)
 
         # Finalization
         if 'return' in _var_dec:
@@ -135,15 +138,10 @@ class DynamicRecipe(Recipe):
             var_name, var_dec  = tuple(defn.items())[0]
             self.process_var(var_name, var_dec)
 
-    def process_return(self):
-        if 'result' in self.spec:
-            self.process_var('RETURN', self.spec['result'])
-
     def value(self):
         return self.diff['RETURN']
 
     def execute(self):
         self.process_includes()
         self.process_vars()
-        self.process_return()
         return self.diff, self.diff.get('RETURN', None)
