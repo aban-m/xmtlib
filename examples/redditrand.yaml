@@ -1,0 +1,30 @@
+metadata:
+  id: redditrand
+  name: Reddit Random!
+  type: dynamic
+
+var:
+  - subreddits_list:      
+      - todayilearned
+      - golang
+      - learnpython
+      - programming
+  - subreddit:
+      do: jinja2                                                        # redundant
+      return: "{{ subreddits_list | random }}"
+  - response:
+      http: "https://old.reddit.com/r/{{ subreddit }}/new.json"
+      type: json                                                        # cast the result to json (redundant)
+  - selftext:
+      args: response
+      do: jsonpath
+      return: $.data.children[0].data.selftext
+  - title:
+      args: response
+      do: jsonpath
+      return: $.data.children[0].data.title
+
+result:
+  return: |
+    {{ title }} (from r/{{ subreddit }})
+    {{ selftext }}

@@ -1,0 +1,22 @@
+metadata:
+  id: quoterand
+  name: Random Quote!
+  type: dynamic
+
+var:
+  - response:
+      http: http://api.quotable.io/random 
+      type: json
+  - quote:
+      args: response
+      do: jsonpath
+      return: $[0].content
+  - author:
+      args: response
+      do: jsonpath
+      return: $[0].author
+
+result:
+  return: |
+    {{ quote }}
+      - {{ author }}.

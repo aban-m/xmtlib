@@ -1,4 +1,3 @@
-from ast import expr
 from . import processor
 from ..base import Recipe, ParsingError
 from ..storage import Spec, Context, RecipeStorage
@@ -10,6 +9,11 @@ from ..utils import without
 #   3. Load static recipes.
 #   4. Remote inclusion caveats (e.g., cyclic dependency)
     
+
+SOURCES = ['args', 'path', 'http']
+PROCESSORS = ['jinja2', 'regex', 'jsonpath', 'xpath', 'nothing']
+TYPES = ['auto', 'text', 'json', 'yaml', 'binary']
+
 class DynamicRecipe(Recipe):
     def __init__(self, spec : Spec, env : RecipeStorage, stack: list = None):
         super().__init__(spec, env, stack)
@@ -21,10 +25,57 @@ class DynamicRecipe(Recipe):
 
         self.diff = Context()
         self.env = env
-        
+
     def preprocess(self): # TODO: Implement preprocessing
-        pass
-    
+        self.spec['var'].append(
+            {
+                'RETURN': self.spec['result'] 
+            }
+        )
+        for i, defn in enumerate(self.spec['var']):
+            var_name, var_dec = tuple(defn.items())[0]
+
+            if not isinstance(var_dec, dict):
+                self.spec['var'][i] = {
+                    var_name: {
+                        'return': var_dec
+                    }
+                }
+                var_dec = self.spec['var'][i][var_name]
+            # assert only one of the sources is present
+            sources_len = len([source for source in SOURCES if source in var_dec])
+            if sources_len == 0:
+                var_dec['args'] = []
+                var_dec['_source'] = 'args'
+
+            elif sources_len == 1:
+                assert var_dec != 'jinja2', 'Cannot have a jinja2 do block in a source-based variable definition.'
+
+                source = [source for source in SOURCES if source in var_dec][0]
+                if source in ['http', 'path']:          # flesh out
+                    if isinstance(var_dec[source], str):
+                        var_dec[source] = {
+                            'target': var_dec[source],
+                            'type': 'auto'
+                        }
+                    assert isinstance(var_dec[source], dict)
+                    if not 'type' in var_dec[source]:
+                        var_dec[source]['type'] = 'auto'
+
+                if source == 'args' and isinstance(var_dec['args'], str):
+                    var_dec['args'] = [var_dec['args']]
+
+                var_dec['_source'] = source
+
+            else:
+                raise ParsingError('Cannot have more than one source in a variable definition.')
+            
+            if 'do' not in var_dec:
+                var_dec['do'] = 'jinja2' if sources_len == 0 and isinstance(var_dec['return'], str) else 'nothing'
+
+            if var_dec['do'] != 'nothing' and not 'return' in var_dec:
+                raise ParsingError('Cannot have a do block without a return statement.')
+
     def process_includes(self):
         for defn in self.spec.get('include', []):
             typ, name = tuple(defn.items())[0]
@@ -43,25 +94,40 @@ class DynamicRecipe(Recipe):
                 raise ValueError('Unrecognized recipe type.')
         
     def process_var(self, var_name, var_dec):
-        _var_dec = processor.interpret(without(var_dec, 'return'), self.diff)
-        content = ''
-        if 'path' in var_dec: 
-            content, typ = processor.load(_var_dec, self.env) # load content if possible
-            _var_dec['type'] = typ
+        # Resolution step
+        _var_dec = var_dec.copy()
+        source = var_dec['_source']
+        _var_dec[source] = processor.interpret(var_dec[source], self.diff)
 
-        value = content # by default, the return value is the loaded content.
+        # Fetching step
+        fetched, type, strict = None, None, False
+        if source == 'args':
+            fetched = [self.diff[arg] for arg in var_dec['args']]
 
-        if 'return' in var_dec: # resolve return expression, altering the return value
-            try:
-                expr = _var_dec['expr']
-            except KeyError:        # expression type not specified, must be inferred from context
-                expr = processor.TYP_EXPR_MAP[_var_dec['type']] if 'path' in _var_dec\
-                        else 'jinja2'                                                   # default to jinja2
-            value = processor.resolve_expression(
-                expr, var_dec['return'],        
-                {**self.diff, var_name: value}, var_name
-            )
-        
+        elif source == 'path':
+            fetched, type = processor.load_local(_var_dec['path'], self.env)
+            if _var_dec['path']['type'] == 'auto' and type:
+                _var_dec['path']['type'] = type
+
+        elif source == 'http':
+            strict = True   # adherence is strict
+            # TODO: Make this more general
+            fetched, type = processor.load_remote(_var_dec['http'])
+            if _var_dec['http']['type'] == 'auto' and type:
+                _var_dec['http']['type'] = type
+
+        else:
+            raise ValueError('Unrecognized source type.') # should not be reached.
+
+        # casting
+        fetched = processor.cast(type, fetched)
+
+        # Finalization
+        if 'return' in _var_dec:
+            value = processor.process(_var_dec['do'], fetched, _var_dec['return'], self.diff)
+        else:
+            value = fetched
+
         self.diff[var_name] = value
         
     def process_vars(self):
