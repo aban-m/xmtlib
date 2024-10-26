@@ -13,7 +13,7 @@ class RecipeStorage:
     # make this an abstract class
     def __init__(self):
         pass
-    def load(self, name) -> Spec:
+    def load_recipe(self, name) -> Spec:
         pass
 
     
@@ -28,7 +28,7 @@ class FileStorage(RecipeStorage):
         self.dumper = dumper
         self.append_ext = append_ext
     
-    def load(self, name) -> Spec:
+    def load_recipe(self, name) -> Spec:
         name += self.append_ext
         for path in self.paths:
             full = os.path.join(path, name)
@@ -37,6 +37,12 @@ class FileStorage(RecipeStorage):
                     return self.loader(fp)
         raise RecipeNotFoundException(f'Could not find {name}.')
     
+    def resolve_path(self, path) -> str:
+        for parent_path in self.paths:
+            full = os.path.join(parent_path, path)
+            if os.path.exists(full) and os.path.isfile(full): return full
+        raise FileNotFoundError(f'Could not find {path}.')
+
     def write(self, name, spec):
         with open(name, 'w', encoding='utf-8') as fp:
             self.dumper(spec, fp)
@@ -49,7 +55,7 @@ class MemoryStorage(RecipeStorage, dict):
     ''' A memory-storage that stores recipe specifications directly '''
     def __init__(self, **data):
         super().__init__(**data)
-    def load(self, name) -> Spec:
+    def load_recipe(self, name) -> Spec:
         try: return self[name]
         except KeyError: raise RecipeNotFoundException(f'Could not find {name}.')
     def write(self, name, spec: Spec): self[name] = spec

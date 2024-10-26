@@ -24,7 +24,7 @@ class StaticRecipe(Recipe):
 
     def include(self, path):
         """Handles the inclusion of a static recipe."""
-        subrecipe = StaticRecipe(self.env.load(path), self.env, self.stack)
+        subrecipe = StaticRecipe(self.env.load_recipe(path), self.env, self.stack)
         subrecipe.execute(compile_tags=False)
 
         precount = len(self)

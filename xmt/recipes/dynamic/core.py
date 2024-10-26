@@ -29,13 +29,13 @@ class DynamicRecipe(Recipe):
         for defn in self.spec.get('include', []):
             typ, name = tuple(defn.items())[0]
             if typ == 'dynamic':
-                spec = self.env.load(name)
+                spec = self.env.load_recipe(name)
                 recipe = DynamicRecipe(spec, self.env, self.stack)
                 recipe.execute()
                 self.diff[name] = recipe.diff
                 
             elif typ == 'static':
-                spec = self.env.load(name)
+                spec = self.env.load_recipe(name)
                 recipe = StaticRecipe(spec, self.env, self.stack)
                 recipe.execute(compile_tags = True)
                 self.diff[name] = recipe # export the entire recipe

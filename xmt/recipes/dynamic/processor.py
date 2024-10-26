@@ -48,7 +48,7 @@ def load(dec, env):
     return load_local(path, typ, env)
 
 def load_local(path, typ, env):
-    path = env.lookup(path)
+    path = env.resolve_path(path)
     ext = os.path.splitext(path)[1].lower()
     if typ is None:
         typ = EXT_MAP.get(ext, 'raw')
