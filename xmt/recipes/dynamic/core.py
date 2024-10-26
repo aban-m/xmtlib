@@ -19,10 +19,10 @@ except ImportError:
 #   4. Remote inclusion caveats (e.g., cyclic dependency)
     
 class DynamicRecipe(Recipe):
-    def __init__(self, spec : Spec, env : RecipeStorage):
-        super().__init__(spec, env)
+    def __init__(self, spec : Spec, env : RecipeStorage, stack: list = None):
+        super().__init__(spec, env, stack)
         self.validate()
-        
+
         self.diff = Context()
         self.env = env
         
@@ -35,7 +35,7 @@ class DynamicRecipe(Recipe):
             typ, name = tuple(defn.items())[0]
             if typ == 'dynamic':
                 spec = self.env.load(name)
-                recipe = DynamicRecipe(spec, self.env)
+                recipe = DynamicRecipe(spec, self.env, self.stack)
                 recipe.execute()
                 self.diff[name] = recipe.diff
                 

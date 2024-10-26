@@ -25,16 +25,8 @@ except ImportError:
 
 
 class StaticRecipe(Recipe):
-    def __init__(self, spec: Spec, env: RecipeStorage, stack=None):
-        super().__init__(spec, env)
-
-        self.stack = stack if stack is not None else []
-        if self.id in self.stack:  # Catch circular dependencies
-            raise CyclicDependencyException(
-                f"Circular dependency detected: {self.id} ultimately calls itself."
-            )
-        self.stack.append(self.id)
-
+    def __init__(self, spec: Spec, env: RecipeStorage, stack: list = None):
+        super().__init__(spec, env, stack)
         self.content = []
 
         if "tags" not in self.spec or not self.spec["tags"]:
