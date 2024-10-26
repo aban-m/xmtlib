@@ -1,10 +1,12 @@
 import os
 
 try:
-    from .models import Spec, RecipeStorage, CyclicDependencyException
+    from .storage import Spec, RecipeStorage, CyclicDependencyException
 except ImportError:
-    from models import Spec, RecipeStorage, CyclicDependencyException
+    from xmt.recipes.storage import Spec, RecipeStorage, CyclicDependencyException
     
+class ParsingError(Exception): pass
+
 class Recipe:
     def __init__(self, spec: Spec, env: RecipeStorage, stack: list = None):        
         for attr in ['type', 'id']:

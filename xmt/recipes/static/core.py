@@ -5,19 +5,16 @@ from collections import defaultdict
 
 try:
     from .parsing import parse_index_string
-    from ..base import Recipe
-    from ..models import Spec, RecipeStorage
+    from ..base import Recipe, ParsingError
+    from ..storage import Spec, RecipeStorage
     from .processor import IndexCollection
-    from ..models import CyclicDependencyException
 
 except ImportError:
     sys.path.append("..")
-    from base import Recipe
-    from models import Spec, RecipeStorage, FileStorage
+    from base import Recipe, ParsingError
+    from xmt.recipes.storage import Spec, RecipeStorage, FileStorage
     from parsing import parse_index_string
     from processor import IndexCollection
-    from models import CyclicDependencyException
-
 
 # TODO:
 #   1. VALIDATION
@@ -96,7 +93,7 @@ class StaticRecipe(Recipe):
                 for ind, annval in val.items():
                     self.content[ind][ann] = annval
             else:
-                raise TypeError("Could not process annotation.")
+                raise ParsingError("Could not process annotation.")
 
     def compile_tags(self):
         """Optimize the tags for fast access and filtering"""

@@ -6,7 +6,7 @@ from copy import deepcopy
 
 from ..xmt.recipes.static import parsing
 from ..xmt.recipes.static.core import StaticRecipe
-from ..xmt.recipes.models import CyclicDependencyException, MemoryStorage
+from ..xmt.recipes.storage import CyclicDependencyException, MemoryStorage
 
 @pytest.fixture
 def basic_recipe():

@@ -1,16 +1,9 @@
 import os
-import io
 import yaml
+
 
 class Context(dict): pass
 class Spec(dict): pass
-
-    # def lookup(self, name):
-    #     assert not os.path.split(name)[0], 'Can only look up files with given names'
-    #     for path in self.paths:
-    #         full = os.path.join(path, name)
-    #         if os.path.exists(full) and os.path.isfile(full): return full
-    #     raise FileNotFoundError(f'Could not find {name}.')
 
 class StorageException(Exception): pass
 class RecipeNotFoundException(StorageException): pass
@@ -27,14 +20,16 @@ class RecipeStorage:
 
 class FileStorage(RecipeStorage):
     ''' A file-based storage that stores recipe specifications in files '''
-    def __init__(self, paths, loader = yaml.safe_load, dumper = yaml.safe_dump):
+    def __init__(self, paths, append_ext = '.yaml', loader = yaml.safe_load, dumper = yaml.safe_dump):
         ''' Initialize a storage. loader/dumper specify the format (YAML by default)'''
         if isinstance(paths, str): paths = [paths]
         self.paths = paths
         self.loader = loader
         self.dumper = dumper
+        self.append_ext = append_ext
     
     def load(self, name) -> Spec:
+        name += self.append_ext
         for path in self.paths:
             full = os.path.join(path, name)
             if os.path.exists(full) and os.path.isfile(full): 

@@ -1,14 +1,16 @@
 try:
     from . import processor
-    from ..base import Recipe
-    from ..models import Spec, Context, RecipeStorage
+    from ..base import Recipe, ParsingError
+    from ..storage import Spec, Context, RecipeStorage
+    from ..static.core import StaticRecipe
     from ..utils import without
 except ImportError:
     import processor
     import sys
     sys.path.insert(0, '..')
-    from base import Recipe
-    from models import Spec, Context, RecipeStorage, FileStorage
+    from base import Recipe, ParsingError
+    from xmt.recipes.storage import Spec, Context, RecipeStorage, FileStorage
+    from static.core import StaticRecipe
     from utils import without
 
 
@@ -21,14 +23,17 @@ except ImportError:
 class DynamicRecipe(Recipe):
     def __init__(self, spec : Spec, env : RecipeStorage, stack: list = None):
         super().__init__(spec, env, stack)
-        self.validate()
+        
+        if self.type != 'dynamic':
+            raise ParsingError(f'Exepcted a dynamic recipe, got recipe of type {self.type}')
+
+        self.preprocess()
 
         self.diff = Context()
         self.env = env
         
-    def validate(self):
-        # TODO: Implement validation
-        pass # really?
+    def preprocess(self): # TODO: Implement preprocessing
+        pass
     
     def process_includes(self):
         for defn in self.spec.get('include', []):
@@ -40,8 +45,10 @@ class DynamicRecipe(Recipe):
                 self.diff[name] = recipe.diff
                 
             elif typ == 'static':
-                raise NotImplementedError('Only dynamic recipes are supported.') # TODO: Implement
-            
+                spec = self.env.load(name)
+                recipe = StaticRecipe(spec, self.env, self.stack)
+                recipe.execute(compile_tags = True)
+                self.diff[name] = recipe # export the entire recipe
             else:
                 raise ValueError('Unrecognized recipe type.')
         
