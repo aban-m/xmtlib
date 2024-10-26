@@ -9,11 +9,16 @@ from jinja2 import Template
 
 import requests
 
-EXT_MAP = {
+EXT_TYP_MAP = {
     'json': 'json',
     'yaml': 'yaml',
     'yml': 'yaml',
     'txt': 'raw'
+}
+TYP_EXPR_MAP = {
+    'json': 'jsonpath',
+    'yaml': 'jinja2',
+    'raw': 'jinja2'
 }
 
 ### PRIMITIVES
@@ -28,7 +33,8 @@ def recurse_object(d, func, on):
     else:
         return d
 
-def recursive_freeze(d): return recurse_object(d, Template, str)
+def recursive_freeze(d): 
+    return recurse_object(d, Template, str)
 def recursive_render(d, vars : dict):
     def func(d):
         return d.render(vars)
@@ -41,25 +47,29 @@ def interpret(d : dict, context : dict):
 def load(dec, env):
     path = dec.get('path', '')
     if not path: 
-        return None
+        return '', 'jinja2'                        # no path, use jinja2
     typ = dec.get('type', None)
+    
     if path.lower().startswith('http') or 'http' in dec:
-        return load_remote(path, typ, dec.get('http', {}))
-    return load_local(path, typ, env)
+        value, typ = load_remote(path, typ, dec.get('http', {}))
+    else:
+        value, typ = load_local(path, typ, env)
+        
+    return value, typ
 
 def load_local(path, typ, env):
     path = env.resolve_path(path)
     ext = os.path.splitext(path)[1].lower()
     if typ is None:
-        typ = EXT_MAP.get(ext, 'raw')
+        typ = EXT_TYP_MAP.get(ext, 'raw')
 
     with open(path, 'r', encoding='utf-8') as fp:
         if typ == 'json': 
-            return json.load(fp)
+            return json.load(fp), typ
         elif typ == 'yaml':
-            return yaml.safe_load(fp)
+            return yaml.safe_load(fp), typ
         elif typ == 'raw':
-            return fp.read()
+            return fp.read(), typ
         else:
             raise ValueError('Unrecognized type.')
 
@@ -84,12 +94,12 @@ def load_remote(path, typ, http_params, return_bytes=False):
     resp = requests.request(method, url = path, data = data, headers = headers)
 
     if return_bytes: 
-        return resp.content # simply return the raw 
+        return resp.content, 'binary' # simply return the raw 
     else:
         if 'json' in resp.headers['Content-Type']: 
-            return json.loads(resp.content.decode('utf-8'))
+            return json.loads(resp.content.decode('utf-8')), 'json'
         else:
-            return resp.content.decode('utf-8')
+            return resp.content.decode('utf-8'), 'raw'
 
 
 ### SPECIALTIES!
@@ -116,5 +126,5 @@ def resolve_expression(expr, ret, state, var_name):
             ret['template'],
             content
         )
-    
-
+    else:
+        raise ValueError('Unrecognized expression type.')

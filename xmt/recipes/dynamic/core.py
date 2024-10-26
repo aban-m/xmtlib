@@ -1,3 +1,4 @@
+from ast import expr
 from . import processor
 from ..base import Recipe, ParsingError
 from ..storage import Spec, Context, RecipeStorage
@@ -5,7 +6,6 @@ from ..static.core import StaticRecipe
 from ..utils import without
 
 # TODO:
-#   1. Handle automatic detection of "expr"
 #   2. Ensure that expr/return are paired correctly.
 #   3. Load static recipes.
 #   4. Remote inclusion caveats (e.g., cyclic dependency)
@@ -32,13 +32,13 @@ class DynamicRecipe(Recipe):
                 spec = self.env.load_recipe(name)
                 recipe = DynamicRecipe(spec, self.env, self.stack)
                 recipe.execute()
-                self.diff[name] = recipe.diff
+                self.diff[name] = recipe.diff # TODO: The identifier should be the ID
                 
             elif typ == 'static':
                 spec = self.env.load_recipe(name)
                 recipe = StaticRecipe(spec, self.env, self.stack)
                 recipe.execute(compile_tags = True)
-                self.diff[name] = recipe # export the entire recipe
+                self.diff[name] = recipe # TODO: The identifier should be the ID
             else:
                 raise ValueError('Unrecognized recipe type.')
         
@@ -46,11 +46,22 @@ class DynamicRecipe(Recipe):
         _var_dec = processor.interpret(without(var_dec, 'return'), self.diff)
         content = ''
         if 'path' in var_dec: 
-            content = processor.load(_var_dec, self.env) # load content if possible
+            content, typ = processor.load(_var_dec, self.env) # load content if possible
+            _var_dec['type'] = typ
 
-        value = content
-        if 'return' in var_dec: 
-            value = processor.resolve_expression(var_dec['expr'], var_dec['return'], {**self.diff, var_name: content}, var_name)
+        value = content # by default, the return value is the loaded content.
+
+        if 'return' in var_dec: # resolve return expression, altering the return value
+            try:
+                expr = _var_dec['expr']
+            except KeyError:        # expression type not specified, must be inferred from context
+                expr = processor.TYP_EXPR_MAP[_var_dec['type']] if 'path' in _var_dec\
+                        else 'jinja2'                                                   # default to jinja2
+            value = processor.resolve_expression(
+                expr, var_dec['return'],        
+                {**self.diff, var_name: value}, var_name
+            )
+        
         self.diff[var_name] = value
         
     def process_vars(self):
