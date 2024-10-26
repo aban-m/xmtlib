@@ -78,3 +78,14 @@ class IndexCollection:
         return hash((tuple(self.indices), self.total_len, self.name))
     
         
+class ContentWrapper(dict):
+    def __init__(self, content: dict):
+        super().__init__(**content)
+    def __repr__(self): return self['content']
+    def __str__(self): return self.__repr__()
+    def __getattr__(self, name):
+        if name in self:
+            return self[name]
+        else:
+            try: return super().__getattr__(name)
+            except AttributeError: return ''

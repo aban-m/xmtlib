@@ -2,7 +2,7 @@ from collections import defaultdict
 from .parsing import parse_index_string
 from ..base import Recipe, ParsingError
 from ..storage import Spec, RecipeStorage
-from .processor import IndexCollection
+from .processor import ContentWrapper, IndexCollection
 
 # TODO:
 #   1. VALIDATION
@@ -38,6 +38,8 @@ class StaticRecipe(Recipe):
                     self.spec["tags"][tag] = parse_index_string(
                         self.spec["tags"][tag], precount
                     )
+            else:
+                self.spec['tags'][tag] = []
             self.spec["tags"][tag].extend([
                 precount + i for i in what
             ])  # HACK: Modifying the spec itself!
@@ -72,7 +74,7 @@ class StaticRecipe(Recipe):
                     pick = val[cpos]
                     if isinstance(pick, dict):
                         if "jump" in pick:  # TODO: Handle and TEST jumping
-                            rpos = pick["jump"] + 1
+                            rpos = pick["jump"]
                     else:
                         self.content[rpos][ann] = pick
                     cpos += 1
@@ -105,7 +107,7 @@ class StaticRecipe(Recipe):
 
     def __getitem__(self, i):
         if isinstance(i, int) or isinstance(i, slice):
-            return self.content[i]
+            return ContentWrapper(self.content[i])
         elif isinstance(i, str):
             return self.tags[i]
         elif isinstance(i, IndexCollection):
