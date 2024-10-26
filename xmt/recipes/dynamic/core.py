@@ -1,18 +1,8 @@
-try:
-    from . import processor
-    from ..base import Recipe, ParsingError
-    from ..storage import Spec, Context, RecipeStorage
-    from ..static.core import StaticRecipe
-    from ..utils import without
-except ImportError:
-    import processor
-    import sys
-    sys.path.insert(0, '..')
-    from base import Recipe, ParsingError
-    from xmt.recipes.storage import Spec, Context, RecipeStorage, FileStorage
-    from static.core import StaticRecipe
-    from utils import without
-
+from . import processor
+from ..base import Recipe, ParsingError
+from ..storage import Spec, Context, RecipeStorage
+from ..static.core import StaticRecipe
+from ..utils import without
 
 # TODO:
 #   1. Handle automatic detection of "expr"
@@ -80,15 +70,3 @@ class DynamicRecipe(Recipe):
         self.process_vars()
         self.process_return()
         return self.diff, self.diff.get('RETURN', None)
-        
-        
-
-if __name__ == '__main__':
-    import yaml
-    NAME = 'sample-main.yaml'
-    def boot():
-        global recipe, spec
-        spec = yaml.safe_load(open(f'../../../samples/{NAME}'))
-        recipe = DynamicRecipe(spec, FileStorage('../../../samples'))
-        recipe.execute()
-    boot()

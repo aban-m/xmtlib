@@ -1,20 +1,8 @@
-import os
-import sys
-
 from collections import defaultdict
-
-try:
-    from .parsing import parse_index_string
-    from ..base import Recipe, ParsingError
-    from ..storage import Spec, RecipeStorage
-    from .processor import IndexCollection
-
-except ImportError:
-    sys.path.append("..")
-    from base import Recipe, ParsingError
-    from xmt.recipes.storage import Spec, RecipeStorage, FileStorage
-    from parsing import parse_index_string
-    from processor import IndexCollection
+from .parsing import parse_index_string
+from ..base import Recipe, ParsingError
+from ..storage import Spec, RecipeStorage
+from .processor import IndexCollection
 
 # TODO:
 #   1. VALIDATION
@@ -127,18 +115,3 @@ class StaticRecipe(Recipe):
 
     def __len__(self):
         return len(self.content)
-
-
-if __name__ == "__main__":
-    import yaml
-    import os
-
-    os.chdir("../../../samples")
-
-    def boot():
-        global spec, recipe
-        spec = yaml.safe_load(open("recipe-archetype.yaml"))
-        recipe = StaticRecipe(spec, FileStorage.current())
-        recipe.execute()
-
-    boot()

@@ -1,10 +1,5 @@
-import os
+from .storage import Spec, RecipeStorage, CyclicDependencyException
 
-try:
-    from .storage import Spec, RecipeStorage, CyclicDependencyException
-except ImportError:
-    from xmt.recipes.storage import Spec, RecipeStorage, CyclicDependencyException
-    
 class ParsingError(Exception): pass
 
 class Recipe:
