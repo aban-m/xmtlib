@@ -2,8 +2,6 @@ from . import processor
 from ..base import Recipe, ParsingError
 from ..storage import Spec, Context, RecipeStorage
 from ..static.core import StaticRecipe
-from ..utils import without
-
 # TODO:
 #   2. Ensure that expr/return are paired correctly.
 #   3. Load static recipes.
@@ -22,11 +20,13 @@ class DynamicRecipe(Recipe):
             raise ParsingError(f'Exepcted a dynamic recipe, got recipe of type {self.type}')
 
         self.preprocess()
-
+        
         self.diff = Context()
         self.env = env
+        self.compile()
 
     def preprocess(self): # TODO: Implement preprocessing
+        if not 'var' in self.spec: self.spec['var'] = []
         self.spec['var'].append(
             {
                 'RETURN': self.spec['result'] 
@@ -78,10 +78,14 @@ class DynamicRecipe(Recipe):
             if var_dec['do'] != 'nothing' and not 'return' in var_dec:
                 raise ParsingError('Cannot have a do block without a return statement.')
 
-    def process_includes(self):
+    def compile(self):
+        self.process_includes(['static'])
+        
+    def process_includes(self, which = []):
         for defn in self.spec.get('include', []):
             typ, name = tuple(defn.items())[0]
-            if typ == 'dynamic':
+            if which and (not typ in which): continue
+            if typ == 'dynaimc':
                 spec = self.env.load_recipe(name)
                 recipe = DynamicRecipe(spec, self.env, self.stack)
                 recipe.execute()
@@ -142,6 +146,6 @@ class DynamicRecipe(Recipe):
         return self.diff['RETURN']
 
     def execute(self):
-        self.process_includes()
+        self.process_includes(['dynamic'])
         self.process_vars()
         return self.diff, self.diff.get('RETURN', None)
