@@ -24,20 +24,35 @@ def main():
 
     recipe = bootstrap(recipe_spec, storage)
     if recipe.type == 'dynamic':
+
         diff, result = recipe.execute()
+        if not var: print(result)
+        elif var == '*': print(diff)
+        else:
+            try: print(diff[var])
+            except KeyError:
+                print(f'Variable {var} not found in diff.', file=sys.stderr)
+
     elif recipe.type == 'static':
         recipe.execute(compile_tags = True)
-        result = [s['content'] for s in recipe.content]
-        diff = recipe
+        if not var:
+            print('\n'.join([p['content'] for p in recipe.content]))
+        elif var == '*':
+            print(recipe.content)
+        else:
+            try: 
+                # check wheter var is an index
+                if var.isdigit():
+                    print(recipe[int(var) - 1])
+                else:
+                    col = recipe[var] # get the collection
+                    print('\n'.join([p['content'] for p in recipe[col]]))
+
+            except KeyError:
+                print(f'Tag {var} not found in the collection.', file=sys.stderr)
     else:
         print(f'Unimplemented recipe type: {recipe.type}.', file=sys.stderr)
         sys.exit(1)
 
-    if not var or var == '*':
-        print(result)
-    else: 
-        try: print(diff[var])
-        except KeyError:
-            print(f'Variable {var} not found in diff.', file=sys.stderr)
 if __name__ == "__main__":
     main()
