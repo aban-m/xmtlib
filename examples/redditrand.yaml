@@ -18,11 +18,11 @@ var:
   - selftext:
       args: response
       do: jsonpath
-      return: $.data.children[0].data.selftext
+      return: $[0].data.children[0].data.selftext
   - title:
       args: response
       do: jsonpath
-      return: $.data.children[0].data.title
+      return: $[0].data.children[0].data.title
 
 result:
   return: |

@@ -32,6 +32,7 @@ def basic_recipe():
     recipe = StaticRecipe(spec, env)
     return recipe
 
+
 @pytest.fixture
 def cyclic_dependency_recipe(request):
 # get the value of basic_recipe
@@ -50,6 +51,7 @@ class TestTags:
         assert (~basic_recipe['all']).indices == []
         assert (basic_recipe['first'] | basic_recipe['last_two']).indices == [1, 2, 3]
 
+
 class TestInclude:
     # mark as expected failure
     def test_cyclic_dependency(self, cyclic_dependency_recipe):
@@ -58,11 +60,11 @@ class TestInclude:
         try:
             cyclic_dependency_recipe.execute()
         except CyclicDependencyException:
-            pass # expected
+            pass  # expected
         except RecursionError:
             pytest.fail('Cyclic dependency not caught.')
         finally:
-            sys.setrecursionlimit(rec_lim) # reset the recursion limit.
+            sys.setrecursionlimit(rec_lim)  # reset the recursion limit.
 
     def test_attachments_integration(self, basic_recipe):
         # set up the environment
@@ -70,12 +72,15 @@ class TestInclude:
         clone_spec['metadata']['id'] = 'dep'
         clone_spec['metadata']['name'] = 'dep'
         clone_spec['annotations'] = {
-            'extra-comment': ['first comment from outside', 'second comment from outside', 'third']
+            'extra-comment': [
+                'first comment from outside', 
+                'second comment from outside', 
+                'third']
         }
 
         # add the dependency
         basic_recipe.spec['content'].append({'include': 'dep'})
-        basic_recipe.env['dep'] = clone_spec # enough to initiate a clone
+        basic_recipe.env['dep'] = clone_spec        # enough to initiate a clone
         basic_recipe.execute()
 
         # check the tags
