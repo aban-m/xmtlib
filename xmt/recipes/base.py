@@ -7,9 +7,12 @@ class Recipe:
         for attr in ['type', 'id']:
             assert attr in spec['metadata']
             setattr(self, attr, spec['metadata'][attr])
-        for attr in ['type', 'id', 'name', 'description']:
-            spec['metadata'][attr] = spec.get(attr, '')
+
         self.spec =  spec
+        
+        for attr in ['type', 'id', 'name', 'description']:
+            self.spec['metadata'][attr] = spec['metadata'].get(attr, '')
+        
         self.env = env
 
         self.stack = stack if stack is not None else []
