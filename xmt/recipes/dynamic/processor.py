@@ -55,11 +55,10 @@ def load_local(path : dict, env : FileStorage):
     if received_type == 'auto':
         received_type = inferred_type
 
-    full = env.resolve_path(target)
     if received_type == 'binary':
-        return open(full, 'rb').read(), inferred_type
+        return env.load_resource(target, 'rb').read(), inferred_type
     else:
-        return open(full, 'r', encoding='utf-8').read(), inferred_type
+        return env.load_resource(target, 'r', encoding='utf-8').read(), inferred_type
     
 def load_remote(http : dict):
     url = http['target']

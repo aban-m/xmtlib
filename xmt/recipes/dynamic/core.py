@@ -15,18 +15,22 @@ TYPES = ['auto', 'text', 'json', 'yaml', 'binary']
 class DynamicRecipe(Recipe):
     def __init__(self, spec : Spec, env : RecipeStorage, stack: list = None):
         super().__init__(spec, env, stack)
-        
         if self.type != 'dynamic':
             raise ParsingError(f'Exepcted a dynamic recipe, got recipe of type {self.type}')
-
-        self.preprocess()
         
+        self.original_spec = spec.copy()
+        self.intialize()
+
+    def intialize(self):
         self.diff = Context()
-        self.env = env
-        self.compile()
+        self.spec = self.original_spec
+        self.preprocess()
+        self.load_static()
 
     def preprocess(self): # TODO: Implement preprocessing
         if not 'var' in self.spec: self.spec['var'] = []
+        if not 'result' in self.spec: self.spec['result'] = {}
+
         self.spec['var'].append(
             {
                 'RETURN': self.spec['result'] 
@@ -34,6 +38,8 @@ class DynamicRecipe(Recipe):
         )
         for i, defn in enumerate(self.spec['var']):
             var_name, var_dec = tuple(defn.items())[0]
+            
+            if isinstance(var_dec, dict) and not var_dec: continue # simply disregard it
 
             if not isinstance(var_dec, dict):
                 if var_dec is not None:
@@ -78,14 +84,14 @@ class DynamicRecipe(Recipe):
             if var_dec['do'] != 'nothing' and not 'return' in var_dec:
                 raise ParsingError('Cannot have a do block without a return statement.')
 
-    def compile(self):
+    def load_static(self):
         self.process_includes(['static'])
         
     def process_includes(self, which = []):
         for defn in self.spec.get('include', []):
             typ, name = tuple(defn.items())[0]
             if which and (not typ in which): continue
-            if typ == 'dynaimc':
+            if typ == 'dynamic':
                 spec = self.env.load_recipe(name)
                 recipe = DynamicRecipe(spec, self.env, self.stack)
                 recipe.execute()
@@ -100,6 +106,8 @@ class DynamicRecipe(Recipe):
                 raise ValueError('Unrecognized recipe type.')
         
     def process_var(self, var_name, var_dec):
+        if not var_dec: return
+
         # Resolution step
         _var_dec = var_dec.copy()
         source = var_dec['_source']
@@ -145,7 +153,17 @@ class DynamicRecipe(Recipe):
     def value(self):
         return self.diff['RETURN']
 
-    def execute(self):
+    def execute(self, total: bool =False, state: dict = None):
+        if total: 
+            self.intialize()
+        
         self.process_includes(['dynamic'])
         self.process_vars()
+        
+        if state: 
+            self.diff.update(state)
+        
         return self.diff, self.diff.get('RETURN', None)
+
+    def __getitem__(self, var):
+        return self.diff[var]
