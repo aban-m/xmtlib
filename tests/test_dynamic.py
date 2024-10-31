@@ -76,6 +76,7 @@ class TestVar:
 
         assert dyn['x'] == 'RAW TEXT'
     
+    @pytest.mark.web
     def test_http_expansion(self, dyn):
         dyn.spec['var'].append(
             {
@@ -115,6 +116,7 @@ class TestExpr:
         out = processor.jsonpath_query(json, '$[0].a[0].b')
         assert out == 1
     
+    @pytest.mark.web
     def test_jsonpath_integration(self, dyn):
         dyn.spec['var'].extend([
             {'x': {
