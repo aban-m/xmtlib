@@ -1,4 +1,6 @@
 from collections import defaultdict
+
+from pypdf import parse_filename_page_ranges
 from .parsing import parse_index_string
 from ..base import Recipe, ParsingError
 from ..storage import Spec, RecipeStorage
@@ -12,6 +14,9 @@ from .processor import ContentWrapper, IndexCollection
 class StaticRecipe(Recipe):
     def __init__(self, spec: Spec, env: RecipeStorage, stack: list = None):
         super().__init__(spec, env, stack)
+        self.initialize()
+
+    def initialize(self):
         self.content = []
 
         if "tags" not in self.spec or not self.spec["tags"]:
@@ -20,6 +25,7 @@ class StaticRecipe(Recipe):
             self.spec["annotations"] = {}
 
         self._tags = {}
+        self._special_tags = []
         self.tags = None
 
     def include(self, path):
@@ -48,9 +54,14 @@ class StaticRecipe(Recipe):
         """Iterates through the 'include' section, including every recipe."""
         for item in self.spec["content"]:
             if isinstance(item, dict):
-                if "include" in item:
-                    self.include(item["include"])
+                if 'include' in item:
+                    self.include(item['include'])
+                elif 'tag' in item:
+                    self._special_tags.append((len(self.content), item))
+                else:
+                    raise ParsingError('Unrecognized special content marker.')
                 continue
+
             self.content.append(defaultdict(None, {"content": item}))
 
     def process_tag(self, tag, what):
@@ -58,12 +69,35 @@ class StaticRecipe(Recipe):
             self._tags[tag] = []
         if isinstance(what, str):
             what = parse_index_string(what, len(self))
+        elif isinstance(what, int): what = [what]
         self._tags[tag].extend(what)
 
     def process_tags(self):
         """Handles the 'tags' section."""
         for tag, what in self.spec["tags"].items():
             self.process_tag(tag, what)
+        
+        for i, special in self._special_tags:
+            
+            try:
+                what = special['tag']
+                tag_name = special['with']
+            except KeyError:
+                raise ParsingError('Malformed special tag marker.')
+            
+            if not tag_name in self._tags:
+                self._tags[tag_name] = []
+
+            if what == 'preceding':
+                self._tags[tag_name].extend(range(1, i + 1))
+            elif what == 'subsequent':
+                self._tags[tag_name].extend(range(max(1, i), len(self)+1))
+            else:
+                raise ParsingError(f'Invalid special marker {what}')
+            
+        for tag_name, indices in self._tags.items():
+            indices.sort()
+
 
     def process_annotations(self):
         """Handles the 'annotations' section."""
@@ -94,9 +128,7 @@ class StaticRecipe(Recipe):
     def execute(self, compile_tags=True):
         """Executes the recipe, making it ready for consumption."""
         # First, clear the state
-        self.content = []
-        self._tags = {}
-        self.tags = None
+        self.initialize()
 
         # Then, process
         self.process_content()
