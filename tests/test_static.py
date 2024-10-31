@@ -17,6 +17,29 @@ class TestTags:
         # complex tests
         assert (~sta['all']).indices == []
         assert (sta['first'] | sta['last_two']).indices == [1, 2, 3]
+    
+    def test_special_simple(self, sta):
+        sta.spec['content'].insert(0,
+            {
+                'tag': 'subsequent',
+                'with': 'special-next'
+            }
+        )
+        sta.spec['content'].insert(2,
+            {
+                'tag': 'preceding',
+                'with': 'special-first'
+            }
+        )
+        sta.spec['content'].append({
+            'tag': 'preceding',
+            'with': 'special-prev'
+        })
+        sta.execute()
+
+        assert sta['special-next'].indices == [1, 2, 3]
+        assert sta['special-prev'].indices == [1, 2, 3]
+        assert sta['special-first'].indices == [1]
 
 
 class TestInclude:
@@ -74,19 +97,52 @@ class TestIndexStrings:
         assert parsing.parse_index_string(input, max(expected)) == expected
     
     @pytest.mark.parametrize('input, expected', [
-        ('1..4;5..8', [1, 2, 3, 4, 5, 6, 7, 8]),
+        ('1..4;5,6,7,8', [1, 2, 3, 4, 5, 6, 7, 8]),
         ('1..1', [1])
     ])
     def test_complex(self, input, expected):
-        assert parsing.parse_index_string(input, max(expected) if expected else 1) == expected
+        assert parsing.parse_index_string(input, max(expected)) == expected
 
     @pytest.mark.parametrize('input, total_len', [
         ('0..0', 1),
         ('4..3', 5),
         ('4..-1', 3),
-        ('4..3', 4)
+        ('1..10/0', 12),
+        ('1..10/-1', 12)
     ])
     def test_vacuous(self, input, total_len):
         # call parse_index_string. if an exception is raised, then the test passes.
         with pytest.raises(Exception):
             parsing.parse_index_string(input, total_len)
+    
+    @pytest.mark.parametrize('input, total_len, expected', [
+        ('1..4/2', 4, [1, 3]),
+        ('3..4/2', 4, [3]),
+    ])
+    def test_step(self, input, total_len, expected):
+        assert parsing.parse_index_string(input, total_len) == expected
+    
+    @pytest.mark.parametrize('input, total_len, expected', [
+        ('1..', 4, [1, 2, 3, 4]),
+        ('..-1', 4, [1, 2, 3, 4]),
+        ('..2', 4, [1, 2]),
+        ('2../2', 4, [2, 4]),
+        ('../1', 4, [1, 2, 3, 4]),
+        ('../2', 4, [1, 3])
+    ])
+    def test_open_end(self, input, total_len, expected):
+        assert parsing.parse_index_string(input, total_len) == expected
+
+
+    def test_parsing_simple(self, sta):
+        sta.spec['tags']['test-exp-first'] = 1
+        sta.spec['tags']['test-exp-all'] = [1, 2, 3]
+        sta.spec['tags']['test-imp-first'] = '1'
+        sta.spec['tags']['test-imp-all'] = '1..3'
+        
+        sta.execute()
+
+        assert sta.tags['test-exp-first'] == sta.tags['test-imp-first']
+        assert sta.tags['test-exp-all'] == sta.tags['test-imp-all']
+        assert sta.tags['test-exp-first'].indices == [1]
+        assert sta.tags['test-exp-all'].indices == [1, 2, 3]
