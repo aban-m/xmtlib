@@ -1,5 +1,6 @@
 import os
 import argparse
+import json
 
 # add xmt to the path
 import sys
@@ -27,7 +28,7 @@ def main():
 
         diff, result = recipe.execute()
         if not var: print(result)
-        elif var == '*': print(diff)
+        elif var == '*': print(json.dumps(diff))
         else:
             try: print(diff[var])
             except KeyError:
@@ -38,7 +39,7 @@ def main():
         if not var:
             print('\n'.join([p['content'] for p in recipe.content]))
         elif var == '*':
-            print(recipe.content)
+            print(json.dumps(recipe.content))
         else:
             try: 
                 # check wheter var is an index
