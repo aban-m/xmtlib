@@ -1,3 +1,5 @@
 requests
 jsonpath_ng
+jsonschema
+jinja2
 PyYAML
