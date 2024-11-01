@@ -2,6 +2,6 @@
 __pycache__
 *.env
 *.vscode
-debug.py
+debug*.py
 *.ps1
 *.bat

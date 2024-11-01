@@ -1,0 +1,32 @@
+# a jsonschema
+
+type: object
+properties:
+  primary-category:
+    type: string
+  secondary-category:
+    type: string
+  primary-intensity:
+    type: integer
+    minimum: 1
+    maximum: 16
+  secondary-intensity:
+    type: integer
+    minimum: 1
+    maximum: 16
+  why:
+    type: string
+    maxLength: 40
+    minLength: 10
+  context:
+    type: string
+    minLength: 40
+
+additionalProperties: false
+required:
+  - primary-category
+  - primary-intensity
+  - why
+  
+dependentRequired:
+  secondary-intensity: [secondary-category]
